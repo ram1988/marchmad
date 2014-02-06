@@ -27,7 +27,7 @@ for row in csvRdr:
 	team2 = toks[2]
 	seasons = season_str[season]
 	#team1
-	query = "SELECT count(*),avg(wscore) from tourney_results WHERE season in ("+seasons+") and wteam="+team1
+	query = "SELECT count(*),avg(wscore) from tourney_results WHERE daynum>135 and season in ("+seasons+") and wteam="+team1
 	lines = cursor.execute(query)
 	wins = cursor.fetchall()
 	team1_win = wins[0][0]
@@ -49,7 +49,7 @@ for row in csvRdr:
 		avg_seed_team1 = 0
 	#print avg_seed_team1
 	#team2
-	query = "SELECT count(*),avg(wscore) from tourney_results WHERE season in ("+seasons+") and wteam="+team2
+	query = "SELECT count(*),avg(wscore) from tourney_results WHERE daynum>135 and season in ("+seasons+") and wteam="+team2
 	lines = cursor.execute(query)
 	wins = cursor.fetchall()
 	team2_win = wins[0][0]
