@@ -1,0 +1,5 @@
+prediction based on
+No. of wins of two teams
+Avg. win score of two teams
+Seeds of two teams
+Ratio of Home/Away wins of two teams
