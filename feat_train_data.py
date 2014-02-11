@@ -60,11 +60,12 @@ def preprocess():
 	feat_gen.close()
 	db.close()
 
+#pred=>0-loss,1-win
 def prepare_train_data():
 	db = getdb()
 	csvRdr = csv.reader(open("data/sample_submission.csv", "r"))
 	feat_gen = open("train_set.csv","w+")
-	feat_gen.write("team1,team1_wins,team1_wscore,team1_loss,team1_lscore,team2,team2_wins,team2_wscore,team2_loss,team2_lscore\n")
+	feat_gen.write("pred,season,team1,team2,team1_wins,team1_wscore,team1_loss,team1_lscore,team2_wins,team2_wscore,team2_loss,team2_lscore\n")
 	seasons = get_seasons()
 	train_dataset = []
 	for row in csvRdr:
@@ -85,10 +86,15 @@ def prepare_train_data():
 				tup = tup + (0,0,0,0,0,)
 			train_dataset.append(tup)
 			if len(tup)!=0:
-				feat_gen.write(s[0]+","+str(team1)+","+str(team2)+","+str(tup[1])+","+str(tup[2])+","+str(tup[3])+","+str(tup[4])+","+str(tup[6])+","+str(tup[7])+","+str(tup[8])+","+str(tup[9])+"\n")
+				team1_wscore = tup[2]
+				team2_wscore = tup[7]
+				pred = 0
+				if team1_wscore > team2_wscore:
+					pred = 1
+				feat_gen.write(str(pred)+","+s[0]+","+str(team1)+","+str(team2)+","+str(tup[1])+","+str(tup[2])+","+str(tup[3])+","+str(tup[4])+","+str(tup[6])+","+str(tup[7])+","+str(tup[8])+","+str(tup[9])+"\n")
 	feat_gen.close()
 	return train_dataset
-	
+		
 def train_model():
 	df = pd.read_csv("train_set.csv")
 	train_cols =  df.columns[4:]
@@ -96,10 +102,76 @@ def train_model():
 	logit = sm.Logit(df['pred'], df[train_cols])
 	# fit the model
 	result = logit.fit()
-	print result
+	print result.summary()
+	return result
+
+def test_model(result):
+	pred_seasons = {'N':13,'O':14,'P':15,'Q':16,'R':17}
+	csvRdr = csv.reader(open("data/sample_submission.csv", "r"))
+	submission = open("final_sub.csv","w+")
+	db = getdb()
+	cursor = db.cursor()
+	seasons = get_seasons()
+	season_str = {}
+	for pred_season in pred_seasons:
+		sub_seasons = seasons[0:pred_seasons[pred_season]]
+		st = ""
+		for s in sub_seasons:
+			st += ("'"+s[0]+"',")
+		season_str[pred_season] = st[0:len(st)-1]
+	print season_str
+	for row in csvRdr:
+		teams = row[0]
+		print teams
+		toks = teams.split("_")
+		season = toks[0]
+		team1 = toks[1]
+		team2 = toks[2]
+		seasons = season_str[season]
+		#team1
+		query = "SELECT count(*),avg(wscore) from tourney_results WHERE daynum>135 and season in ("+seasons+") and wteam="+team1
+		lines = cursor.execute(query)
+		wins = cursor.fetchall()
+		team1_win = wins[0][0]
+		#print wins
+		team1_winscore = wins[0][1]
+		if team1_winscore==None:
+			team1_winscore = 0
+		query = "SELECT count(*),sum(lscore) from tourney_results WHERE daynum>135 and season in ("+seasons+") and lteam="+team1
+		lines = cursor.execute(query)
+		loss = cursor.fetchall()
+		team1_loss = loss[0][0]
+		#print wins
+		team1_lscore = loss[0][1]
+		if team1_lscore==None:
+			team1_lscore = 0
+		#print team1+"-->"+str(seeds)
+		#team2
+		query = "SELECT count(*),avg(wscore) from tourney_results WHERE daynum>135 and season in ("+seasons+") and wteam="+team2
+		lines = cursor.execute(query)
+		wins = cursor.fetchall()
+		team2_win = wins[0][0]
+		team2_winscore = wins[0][1]
+		if team2_winscore==None:
+			team2_winscore = 0
+		query = "SELECT count(*),sum(lscore) from tourney_results WHERE daynum>135 and season in ("+seasons+") and lteam="+team2
+		lines = cursor.execute(query)
+		loss = cursor.fetchall()
+		team2_loss = loss[0][0]
+		#print wins
+		team2_lscore = loss[0][1]
+		if team2_lscore==None:
+			team2_lscore = 0
+		pred = result.predict([[int(team1_win),int(team2_win)]])
+		print teams+"---"+str(pred)
+		submission.write(teams+","+str(pred[0])+"\n")
+	submission.close()
+
+#prediction based on no. of wins and win scores
 #preprocess()
 #dataset = prepare_train_data()
-train_model()
+result = train_model()
+test_model(result)
 '''
 
 '''
