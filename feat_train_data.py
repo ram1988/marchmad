@@ -120,7 +120,7 @@ def prepare_tourney_train_data():
 	db = getdb()
 	csvRdr = csv.reader(open("data/sample_submission.csv", "r"))
 	feat_gen = open("train_tourney_set.csv","w+")
-	feat_gen.write("pred,season,team1,team2,team1_wins,team1_wscore,team1_seed,team2_wins,team2_wscore,team2_seed\n")
+	feat_gen.write("pred,season,team1,team2,team1_wins,team1_wscore,team1_seed,team2_wins,team2_wscore,team2_seed,win_score\n")
 	seasons = get_seasons()
 	train_dataset = []
 	for row in csvRdr:
@@ -139,26 +139,34 @@ def prepare_tourney_train_data():
 			lines = cursor.execute(query)
 			rset2 = cursor.fetchall()
 			tup = ()
+			both = 0
 			if len(rset1)!=0:
 				tup = tup+(team1,rset1[0][1],rset1[0][2],rset1[0][3])
 			else:
 				tup = tup+(team1,0,0,0)
+				both+=1 
 			if len(rset2)!=0:
 				tup = tup+(team2,rset2[0][1],rset2[0][2],rset2[0][3])
 			else:
 				tup = tup+(team2,0,0,0)
-			if (tup[1] == 0) || (tup[2] == 0) || (tup[3] == 0) || (tup[5] ==0) || (tup[6] == 0) || (tup[7] == 0):
+				both+=1
+			if both==2:
 				continue
 			train_dataset.append(tup)
 			if len(tup)!=0:
-				team1_wscore = tup[2]
-				team2_wscore = tup[6]
+				#team1_wscore = tup[2]
+				#team2_wscore = tup[6]
+				team1_wins = tup[1]
+				team2_wins = tup[5]
+				team1_seed = tup[3]
+				team2_seed = tup[7]
 				pred = 0
-				if team1_wscore == team2_wscore:
+				if team1_seed == team2_seed:
 					pred = 0.5
-				if team1_wscore > team2_wscore:
+				if team1_seed > team2_seed:
 					pred = 1
-				feat_gen.write(str(pred)+","+s[0]+","+str(team1)+","+str(team2)+","+str(tup[1])+","+str(tup[2])+","+str(tup[3])+","+str(tup[5])+","+str(tup[6])+","+str(tup[7])+"\n")
+				win_score = (0.5+(0.03*(team1_seed-team2_seed)))
+				feat_gen.write(str(pred)+","+s[0]+","+str(team1)+","+str(team2)+","+str(tup[1])+","+str(tup[2])+","+str(tup[3])+","+str(tup[5])+","+str(tup[6])+","+str(tup[7])+","+str(win_score)+"\n")
 	feat_gen.close()
 	return train_dataset
 
@@ -201,7 +209,7 @@ def train_model():
 	df = pd.read_csv("train_tourney_set.csv")
 	train_cols =  df.columns[4:]
 	#print df["pred"]
-	'''
+	
 	logit = sm.Logit(df['pred'], df[train_cols])
 	# fit the model
 	result = logit.fit()
@@ -215,6 +223,7 @@ def train_model():
 		labels.append(int(p))
 	svr = SVR()
 	result = svr.fit(sets,labels)
+	'''
 	return result
 	
 
@@ -309,6 +318,8 @@ def test_tour_model(result):
 		lines = cursor.execute(query)
 		wins = cursor.fetchall()
 		team1_win = wins[0][0]
+		if team1_win==None:
+			team1_win = 0
 		#print wins
 		team1_winscore = wins[0][1]
 		if team1_winscore==None:
@@ -317,12 +328,16 @@ def test_tour_model(result):
 		lines = cursor.execute(query)
 		seeds = cursor.fetchall()
 		team1_seed = seeds[0][0]
+		if team1_seed==None:
+			team1_seed = 0
 		print team1+"-->"+str(team1_seed)
 		#team2
 		query = "SELECT count(*),sum(wscore) from tourney_results WHERE daynum>135 and season in ("+seasons+") and wteam="+team2
 		lines = cursor.execute(query)
 		wins = cursor.fetchall()
 		team2_win = wins[0][0]
+		if team2_win==None:
+			team2_win = 0
 		team2_winscore = wins[0][1]
 		if team2_winscore==None:
 			team2_winscore = 0
@@ -330,16 +345,18 @@ def test_tour_model(result):
 		lines = cursor.execute(query)
 		seeds = cursor.fetchall()
 		team2_seed = seeds[0][0]
+		if team2_seed==None:
+			team2_seed = 0
 		print team1+"-->"+str(team2_seed)
-		pred = result.predict_proba([[int(team1_win),int(team1_winscore),int(team1_seed),int(team2_win),int(team2_winscore),int(team2_seed)]])
-		print teams+"---"+str(pred[0][0])
-		submission.write(teams+","+str(pred[0][0])+"\n")
+		pred = result.predict([[int(team1_win),int(team1_seed),int(team2_win),int(team2_seed),(0.5+(0.03*(team1_seed-team2_seed)))]])
+		print teams+"---"+str(pred[0])
+		submission.write(teams+","+str(pred[0])+"\n")
 	submission.close()
 #prediction based on no. of wins and win scores
 #preprocess_tour()
-#dataset = prepare_tourney_train_data()
-result = train_model()
-test_tour_model(result)
+dataset = prepare_tourney_train_data()
+#result = train_model()
+#test_tour_model(result)
 '''
 
 '''
