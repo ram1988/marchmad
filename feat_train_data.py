@@ -4,6 +4,7 @@ import statsmodels.api as sm
 from sklearn.svm import SVR
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LinearRegression
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 #http://blog.yhathq.com/posts/logistic-regression-and-python.html
@@ -207,7 +208,7 @@ def train_model():
 	labels = []
 	for p in preds:
 		labels.append(int(p))
-	logit = RandomForestClassifier()
+	logit = LogisticRegression()
 	result = logit.fit(sets,labels)
 	'''
 	return result
@@ -232,7 +233,7 @@ def test_model(result):
 		tup = ()
 		#if len(rset)!=0:
 		if len(rset) == 2:
-			print rset
+			#print rset
 			tup = tup+(team1,rset[0][1],rset[0][2],rset[0][3],rset[0][4],rset[0][5],rset[0][6])
 			tup = tup+(team2,rset[1][1],rset[1][2],rset[1][3],rset[1][4],rset[1][5],rset[1][6])
 		if len(tup)!=0:
@@ -264,9 +265,9 @@ def test_model(result):
 					team_ncaa_sf = team2_ncaa_sf
 					team_seed = team2_seed
 			#pred = result.predict([[team1_winper,team2_winper]])
-			#pred = result.predict([[wdiff,team1_ncaa_occ,team2_ncaa_occ,team1_winper,team2_winper]])
-			pred = result.predict([[wdiff,team_ncaa_occ,team_winper,team_seed]])
-			#print teams+"---"+str(pred)
+			pred = result.predict([[team1_winper,team2_winper,team1_ncaa_occ,team2_ncaa_occ,team1_seed,team2_seed]])
+			#pred = result.predict([[wdiff,team_ncaa_occ,team_winper,team_seed]])
+			print teams+"---"+str(pred)
 			submission.write(teams+","+str(round(pred[0],3))+"\n")
 			#submission.write(teams+","+str(round(pred[0][0],5))+"\n")
 	submission.close()
@@ -360,9 +361,9 @@ def test_tour_model(result):
 	submission.close()
 #prediction based on no. of wins and win scores
 #preprocess_tour()
-dataset = prepare_tourney_train_data()
-#result = train_model()
-#test_model(result)
+#dataset = prepare_tourney_train_data()
+result = train_model()
+test_model(result)
 '''
 
 '''
