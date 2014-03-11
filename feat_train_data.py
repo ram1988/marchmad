@@ -363,9 +363,9 @@ def test_tour_model(result):
 	submission.close()
 #prediction based on no. of wins and win scores
 #preprocess_tour()
-dataset = prepare_tourney_train_data()
-#result = train_model()
-#test_model(result)
+#dataset = prepare_tourney_train_data()
+result = train_model()
+test_model(result)
 '''
 
 '''
