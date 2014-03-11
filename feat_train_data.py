@@ -160,8 +160,9 @@ def prepare_tourney_train_data():
 				team_winper = 0
 				team_ncaa_occ = 0
 				team1_ncaa_sf = 0
-				pred = team1_winper
+				pred = team1_winper+(wdiff/team1_wscore)
 				
+								
 				if team1_seed!=0 and team2_seed!=0:
 					if team1_seed <= team2_seed:
 						pred = pred + (0.02*(team2_seed-team1_seed))
@@ -173,7 +174,8 @@ def prepare_tourney_train_data():
 						pred = pred + (0.01*(team1_ncaa_occ-team2_ncaa_occ))
 					else:
 						pred = pred - (0.01*(team2_ncaa_occ-team1_ncaa_occ))
-					
+				
+				pred = abs(pred)
 				'''
 				if team1_winper>team2_winper and team1_ncaa_occ > team2_ncaa_occ  and team1_seed < team2_seed:
 					pred = team1_winper+(0.02*(team2_seed-team1_seed))+(0.01*(team1_ncaa_occ-team2_ncaa_occ))
@@ -188,7 +190,7 @@ def prepare_tourney_train_data():
 					team_ncaa_sf = team2_ncaa_sf
 					team_seed = team2_seed
 				'''
-				feat_gen.write(str(pred)+","+s[0]+","+str(team1)+","+str(team2)+","+str(team1_winper)+","+str(team2_winper)+","+str(team1_ncaa_occ)+","+str(team2_ncaa_occ)+","+str(team1_seed)+","+str(team2_seed)+"\n")
+				feat_gen.write(str(pred)+","+s[0]+","+str(team1)+","+str(team2)+","+str(team1_winper)+","+str(team2_winper)+","+str(team1_ncaa_occ)+","+str(team2_ncaa_occ)+","+str(team1_seed)+","+str(team2_seed)+","+str(wdiff)+"\n")
 				#feat_gen.write(str(pred)+","+s[0]+","+str(team1)+","+str(team2)+","+str(wdiff)+","+str(team_ncaa_occ)+","+str(team_ncaa_sf)+","+str(team_winper)+"\n")
 	feat_gen.close()
 	return train_dataset
@@ -265,7 +267,7 @@ def test_model(result):
 					team_ncaa_sf = team2_ncaa_sf
 					team_seed = team2_seed
 			#pred = result.predict([[team1_winper,team2_winper]])
-			pred = result.predict([[team1_winper,team2_winper,team1_ncaa_occ,team2_ncaa_occ,team1_seed,team2_seed]])
+			pred = result.predict([[team1_winper,team2_winper,team1_ncaa_occ,team2_ncaa_occ,team1_seed,team2_seed,wdiff]])
 			#pred = result.predict([[wdiff,team_ncaa_occ,team_winper,team_seed]])
 			print teams+"---"+str(pred)
 			submission.write(teams+","+str(round(pred[0],3))+"\n")
@@ -361,9 +363,9 @@ def test_tour_model(result):
 	submission.close()
 #prediction based on no. of wins and win scores
 #preprocess_tour()
-#dataset = prepare_tourney_train_data()
-result = train_model()
-test_model(result)
+dataset = prepare_tourney_train_data()
+#result = train_model()
+#test_model(result)
 '''
 
 '''
