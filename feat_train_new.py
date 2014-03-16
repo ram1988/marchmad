@@ -117,7 +117,7 @@ def prepare_tourney_train_data():
 	db = getdb()
 	csvRdr = csv.reader(open("data/sample_submission.csv", "r"))
 	feat_gen = open("train_tourney_set.csv","w+")
-	#feat_gen.write("pred,season,team1,team2,team1_ncaa_occ,team2_ncaa_occ,team1_seed,team2_seed,\n")
+	#feat_gen.write("pred,season,team1,team2,wdiff,team1_ncaa_occ,team2_ncaa_occ,team1_seed,team2_seed,\n")
 	feat_gen.write("pred,season,team1,team2,team1_winper,team2_winper,team1_ncaa_occ,team2_ncaa_occ,team1_seed,team2_seed,wdiff\n")
 	
 	print "start querying"
@@ -174,13 +174,14 @@ def prepare_tourney_train_data():
 		team2_avg = cursor.fetchall()
 		team2_avgwscore = team2_avg[0][0]
 		team2_avglscore = team2_avg[0][1]
-		wdiff = team1_avgwscore-team2_avgwscore
-		ldiff = team1_avglscore-team2_avglscore
+		wdiff = (team1_avgwscore-team2_avgwscore)/team1_avgwscore
+		ldiff = (team1_avglscore-team2_avglscore)/team1_avglscore
 		
 		print "season"+season+"--->"+team1+"--"+team2+"----seed1"+str(team1_seed)+"---seed2"+str(team2_seed)
-		pred = 0.5+(0.02*(team2_seed-team1_seed))+(0.01*(team1_ncaa_occ-team2_ncaa_occ))
+		pred = 0.5+wdiff+(0.02*(team2_seed-team1_seed))+(0.01*(team1_ncaa_occ-team2_ncaa_occ))
+		#pred = 0.5+wdiff+(0.01*(team2_seed-team1_seed))+(0.001*(team1_ncaa_occ-team2_ncaa_occ))
 		
-		feat_gen.write(str(pred)+","+season+","+team1+","+team2+","+str(team1_ncaa_occ)+","+str(team2_ncaa_occ)+","+str(team1_seed)+","+str(team2_seed)+","+str(wdiff)+","+str(ldiff)+"\n")
+		feat_gen.write(str(pred)+","+season+","+team1+","+team2+","+str(wdiff)+","+str(team1_ncaa_occ)+","+str(team2_ncaa_occ)+","+str(team1_seed)+","+str(team2_seed)+"\n")
 				
 	feat_gen.close()
 	return train_dataset
@@ -261,11 +262,11 @@ def test_model(result):
 		team2_avg = cursor.fetchall()
 		team2_avgwscore = team2_avg[0][0]
 		team2_avglscore = team2_avg[0][1]
-		wdiff = team1_avgwscore-team2_avgwscore
-		ldiff = team1_avglscore-team2_avglscore
+		wdiff = round((team1_avgwscore-team2_avgwscore)/team1_avgwscore,5)
+		#ldiff = (team1_avglscore-team2_avglscore)/team1_avglscore
 
-		pred = result.predict([[team1_ncaa_occ,team2_ncaa_occ,team1_seed,team2_seed]])
-		print teams+"---"+str(pred)
+		pred = result.predict([[wdiff,team1_ncaa_occ,team2_ncaa_occ,team1_seed,team2_seed]])
+		print teams+"---"+str(pred)+"---"+str(wdiff)
 		submission.write(teams+","+str(round(pred[0],3))+"\n")
 		#submission.write(teams+","+str(round(pred[0][0],5))+"\n")
 	submission.close()
