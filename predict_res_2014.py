@@ -7,6 +7,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.linear_model import LinearRegression
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
+from sklearn import cross_validation
+
 #http://blog.yhathq.com/posts/logistic-regression-and-python.html
 
 def getdb():
@@ -185,7 +187,22 @@ def prepare_tourney_train_data():
 				
 	feat_gen.close()
 	return train_dataset
-		
+
+	
+def logloss(y, yhat):
+    #Y and Yhat must be vectors of equal length    
+    if len(y) != len(yhat):
+        raise UserWarning, 'Y and Yhat are not the same size'
+        return
+    #We do not predict 0 or 1 as they would make our answers infinitly wrong
+    not_allowed = [0,1]
+    if len([i for i in yhat if i in not_allowed])>0:
+        raise UserWarning, 'You cannot predict 0 or 1'
+        return
+    from math import log    
+    score = -sum(map(lambda y,yhat: y*log(yhat) + (1-y)*log(1-yhat), y,yhat))/len(y)
+    return score
+	
 def train_model():
 	df = pd.read_csv("train_tourney_set.csv")
 	train_cols =  df.columns[4:]
@@ -195,6 +212,8 @@ def train_model():
 	logit = sm.Logit(df['pred'], df[train_cols])
 	# fit the model
 	result = logit.fit()
+	print "Cross Fold Validation"
+	scores = cross_validation.cross_val_score(logit, df[train_cols], df['pred'], cv=5)
 	print result.summary()
 	'''
 	sets = np.array(df[train_cols])
@@ -208,6 +227,42 @@ def train_model():
 	'''
 	return result
 
+def cross_validate_model(k):
+	df = pd.read_csv("train_tourney_set.csv")
+	train_cols =  df.columns[4:]
+	#print df["pred"]
+	print "training the model"
+	tot_len = len(df)
+	eq_size = tot_len/k
+	print tot_len
+	start = 0
+	end = eq_size
+	test_data = df[start:end]
+	train_data = df[end:tot_len]
+	print train_data
+	for i in range(1,k+1):
+		print "Fold--->"+str(i)
+			
+		logit = sm.Logit(train_data['pred'], train_data[train_cols])
+		# fit the model
+		result = logit.fit()
+		
+		start = end
+		end = end+eq_size
+		
+		test_data = df[start:end]
+		test_data_pred = []
+		actual_pred = []
+		for item in test_data.iterrows():
+			pred = result.predict([[item[1]["wdiff"],item[1]["team1_ncaa_occ"],item[1]["team2_ncaa_occ"],item[1]["team1_seed"],item[1]["team2_seed"]]])
+			test_data_pred.append(pred)
+			actual_pred.append(pred)
+		score = logloss(actual_pred,test_data_pred)
+		print "LogLoss-->"+str(score[0])+"\n\n"
+		train_data = [df[0:start] , df[end:tot_len]]
+		train_data = pd.concat(train_data)
+
+	
 def test_model(result):
 	pred_seasons = {'N':13,'O':14,'P':15,'Q':16,'R':17}
 	csvRdr = csv.reader(open("data2014/sample_submission.csv", "r"))
@@ -274,8 +329,9 @@ def test_model(result):
 #prediction based on no. of wins and win scores
 #preprocess_tour()
 #dataset = prepare_tourney_train_data()
-result = train_model()
-test_model(result)
+cross_validate_model(60)
+#result = train_model()
+#test_model(result)
 '''
 
 '''
